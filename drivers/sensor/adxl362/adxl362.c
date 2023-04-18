@@ -318,7 +318,7 @@ static int adxl362_attr_set(const struct device *dev,
 {
 	switch (attr) {
 	case SENSOR_ATTR_UPPER_THRESH:
-	case SENSOR_ATTR_LOWER_THRESH:
+	case SENSOR_ATTR_LOWER_THRESH: /***/
 		return adxl362_attr_set_thresh(dev, chan, attr, val);
 	case SENSOR_ATTR_HYSTERESIS:
 	{
