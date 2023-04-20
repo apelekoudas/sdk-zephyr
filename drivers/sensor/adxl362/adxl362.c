@@ -318,7 +318,7 @@ static int adxl362_attr_set(const struct device *dev,
 {
 	switch (attr) {
 	case SENSOR_ATTR_UPPER_THRESH:
-	case SENSOR_ATTR_LOWER_THRESH: /***/
+	case SENSOR_ATTR_LOWER_THRESH:
 		return adxl362_attr_set_thresh(dev, chan, attr, val);
 	case SENSOR_ATTR_HYSTERESIS:
 	{
@@ -326,6 +326,13 @@ static int adxl362_attr_set(const struct device *dev,
 
 		return adxl362_set_reg(dev, (timeout & 0x7FF), ADXL362_REG_TIME_INACT_L, 2);
 	}
+	case SENSOR_ATTR_PRIV_START:	/* TP added: activity time */
+	{
+		uint16_t timeout = val->val1;
+
+		return adxl362_set_reg(dev, (timeout & 0xFF), ADXL362_REG_TIME_ACT, 1);
+	}
+
 	default:
 		/* Do nothing */
 		break;
@@ -694,6 +701,46 @@ static int adxl362_chip_init(const struct device *dev)
 	return 0;
 }
 
+/*
+*/
+int selfTest(const struct device *dev) {
+	struct adxl362_data *adxl362_data = dev->data;
+
+	int filterVal = ADXL362_FILTER_CTL_RANGE(ADXL362_RANGE_8G) | ADXL362_FILTER_CTL_ODR(ADXL362_ODR_100_HZ);
+	int ret = adxl362_set_reg(dev, filterVal, ADXL362_REG_FILTER_CTL, 1);	// +-8g, 100Hz
+
+	ret |= adxl362_set_reg(dev, ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON), ADXL362_REG_POWER_CTL, 1);	// measure on
+	k_msleep(4000 / 100);		// wait
+
+	adxl362_sample_fetch(dev, SENSOR_CHAN_ALL);
+	int16_t mg_x = adxl362_data->acc_x;
+	int16_t mg_y = adxl362_data->acc_y;
+	int16_t mg_z = adxl362_data->acc_z;
+
+	ret |= adxl362_set_reg(dev, ADXL362_SELF_TEST_ST, ADXL362_REG_SELF_TEST, 1);	// enable self-test
+	k_msleep(4000 / 100);		// wait 4/ODR seconds
+
+	adxl362_sample_fetch(dev, SENSOR_CHAN_ALL);
+	int16_t mg_x_st = adxl362_data->acc_x;
+	int16_t mg_y_st = adxl362_data->acc_y;
+	int16_t mg_z_st = adxl362_data->acc_z;
+
+	ret |= adxl362_set_reg(dev, 0, ADXL362_REG_SELF_TEST, 1);	// disable self-test
+
+	long mg_dx = (mg_x_st - mg_x) * 1000 / ADXL362_ACCEL_8G_LSB_PER_G;
+	long mg_dy = (mg_y_st - mg_y) * 1000 / ADXL362_ACCEL_8G_LSB_PER_G;
+	long mg_dz = (mg_z_st - mg_z) * 1000 / ADXL362_ACCEL_8G_LSB_PER_G;
+
+	if( ( (mg_dx > 200) && (mg_dx < 2800) ) &&			// as per data sheet table 22
+			( (mg_dy > -2800) && (mg_dy < -200) ) &&
+			( (mg_dz > 200) && (mg_dz < 2800) ) && 
+			( ret == 0) ) {
+				return 0;
+			} else {
+				return -1;
+			}
+}
+
 /**
  * @brief Initializes communication with the device and checks if the part is
  *        present by reading the device id.
@@ -725,6 +772,11 @@ static int adxl362_init(const struct device *dev)
 	adxl362_get_reg(dev, &value, ADXL362_REG_PARTID, 1);
 	if (value != ADXL362_PART_ID) {
 		LOG_ERR("wrong part_id: %d\n", value);
+		return -ENODEV;
+	}
+
+	if(selfTest(dev) != 0) {	// TP added
+		LOG_ERR("Self test failed");
 		return -ENODEV;
 	}
 

@@ -20,6 +20,7 @@ LOG_MODULE_DECLARE(ADXL362, CONFIG_SENSOR_LOG_LEVEL);
 static void adxl362_thread_cb(const struct device *dev)
 {
 	struct adxl362_data *drv_data = dev->data;
+	const struct adxl362_config *config = dev->config;	
 	uint8_t status_buf;
 
 	/* Clears activity and inactivity interrupt */
@@ -46,6 +47,8 @@ static void adxl362_thread_cb(const struct device *dev)
 		drv_data->drdy_handler(dev, &drv_data->drdy_trigger);
 	}
 	k_mutex_unlock(&drv_data->trigger_mutex);
+
+	gpio_pin_interrupt_configure_dt(&config->interrupt, GPIO_INT_LEVEL_ACTIVE);	// Re-enable IRQ
 }
 
 static void adxl362_gpio_callback(const struct device *dev,
@@ -53,6 +56,9 @@ static void adxl362_gpio_callback(const struct device *dev,
 {
 	struct adxl362_data *drv_data =
 		CONTAINER_OF(cb, struct adxl362_data, gpio_cb);
+	const struct adxl362_config *config = drv_data->dev->config;
+
+	gpio_pin_interrupt_configure_dt(&config->interrupt, GPIO_INT_DISABLE); // disable further IRQs
 
 #if defined(CONFIG_ADXL362_TRIGGER_OWN_THREAD)
 	k_sem_give(&drv_data->gpio_sem);
@@ -109,6 +115,10 @@ int adxl362_trigger_set(const struct device *dev,
 		int_mask = ADXL362_INTMAP1_INACT;
 		/* Clear activity and inactivity interrupts */
 		adxl362_get_status(dev, &status_buf);
+		int ret = gpio_pin_interrupt_configure_dt(&config->interrupt, GPIO_INT_LEVEL_ACTIVE);	// Enable IRQ
+		if (ret < 0) {
+			return ret;
+		}
 		break;
 	case SENSOR_TRIG_DATA_READY:
 		k_mutex_lock(&drv_data->trigger_mutex, K_FOREVER);
@@ -177,12 +187,6 @@ int adxl362_init_interrupt(const struct device *dev)
 #elif defined(CONFIG_ADXL362_TRIGGER_GLOBAL_THREAD)
 	drv_data->work.handler = adxl362_work_cb;
 #endif
-
-	ret = gpio_pin_interrupt_configure_dt(&cfg->interrupt,
-					      GPIO_INT_EDGE_TO_ACTIVE);
-	if (ret < 0) {
-		return ret;
-	}
 
 	return 0;
 }
