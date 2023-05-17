@@ -83,3 +83,23 @@ properties:
         - "10.2"
         - "5.05"
         - "420"
+
+    accel-lp-odr:
+      type: string
+      required: true
+      description: |
+        Low Power Accelerometer ODR Control.
+        Maps to posc_clksel[3:0] field in  Accelerometer ODR setting.
+      enum:
+        - "0.24"
+        - "0.49"
+        - "0.98"
+        - "1.95"
+        - "3.91"
+        - "7.81"
+        - "15.63"
+        - "31.25"
+        - "62.50"
+        - "125"
+        - "250"
+        - "500"
