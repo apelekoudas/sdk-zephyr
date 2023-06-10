@@ -334,6 +334,8 @@ static void sx127x_dio_work_handle(struct k_work *work)
 	int dio = work - dev_data.dio_work;
 
 	(*DioIrq[dio])(NULL);
+
+	gpio_pin_interrupt_configure_dt(&sx127x_dios[dio], GPIO_INT_LEVEL_ACTIVE);		// TP re-enable IRQ
 }
 
 static void sx127x_irq_callback(const struct device *dev,
@@ -346,6 +348,8 @@ static void sx127x_irq_callback(const struct device *dev,
 	for (i = 0; i < SX127X_MAX_DIO; i++) {
 		if (dev == sx127x_dios[i].port &&
 		    pin == sx127x_dios[i].pin) {
+
+			gpio_pin_interrupt_configure_dt(&sx127x_dios[i], GPIO_INT_DISABLE);	// TP disable IRQ				
 			k_work_submit(&dev_data.dio_work[i]);
 		}
 	}
@@ -381,7 +385,7 @@ void SX127xIoIrqInit(DioIrqHandler **irqHandlers)
 			return;
 		}
 		gpio_pin_interrupt_configure_dt(&sx127x_dios[i],
-						GPIO_INT_EDGE_TO_ACTIVE);
+						GPIO_INT_LEVEL_ACTIVE);				// TP changed from EDGE to LEVEL
 	}
 
 }

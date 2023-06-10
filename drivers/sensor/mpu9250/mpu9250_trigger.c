@@ -13,8 +13,12 @@ LOG_MODULE_DECLARE(MPU9250, CONFIG_SENSOR_LOG_LEVEL);
 
 
 #define MPU9250_REG_INT_EN	0x38
-#define MPU9250_DRDY_EN		BIT(0)
+#define MPU9250_DRDY_BIT	BIT(0)
+#define MPU9250_WOM_BIT		BIT(6)
 
+#define MPU9250_REG_INT_STATUS	0x3A
+
+static uint16_t TailPulseCntr = 0;
 
 int mpu9250_trigger_set(const struct device *dev,
 			const struct sensor_trigger *trig,
@@ -23,32 +27,38 @@ int mpu9250_trigger_set(const struct device *dev,
 	struct mpu9250_data *drv_data = dev->data;
 	const struct mpu9250_config *cfg = dev->config;
 	int ret;
-
-	if (trig->type != SENSOR_TRIG_DATA_READY) {
-		return -ENOTSUP;
-	}
-
-	ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin, GPIO_INT_DISABLE);
-	if (ret < 0) {
-		LOG_ERR("Failed to disable gpio interrupt.");
-		return ret;
-	}
-
-	drv_data->data_ready_handler = handler;
-	if (handler == NULL) {
+	
+	LOG_DBG("mpu9250_trigger_set %d %d", trig->type, (int)handler);
+	if (trig->type == SENSOR_TRIG_DATA_READY) {
+		drv_data->data_rdy_handler = handler;
+	  	return i2c_reg_update_byte_dt(&cfg->i2c, MPU9250_REG_INT_EN, MPU9250_DRDY_BIT, (handler == NULL ? 0 : 1));	
+	} else if (trig->type == SENSOR_TRIG_STATIONARY) {
+		drv_data->stationary_handler = handler;
 		return 0;
+	} else if (trig->type == SENSOR_TRIG_MOTION) {
+
+		ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin, GPIO_INT_DISABLE);
+		if (ret < 0) {
+			LOG_ERR("Failed to disable gpio interrupt.");
+			return ret;
+		}
+
+		drv_data->motion_handler = handler;
+		if (handler == NULL) {
+			return 0;
+		}
+
+		ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin,
+							GPIO_INT_LEVEL_ACTIVE);			// TP changed from EDGE to LEVEL
+		if (ret < 0) {
+			LOG_ERR("Failed to enable gpio interrupt.");
+			return ret;
+		}
+
+		return 0;
+	} else {
+		return -EINVAL;
 	}
-
-	drv_data->data_ready_trigger = trig;
-
-	ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin,
-					      GPIO_INT_EDGE_TO_ACTIVE);
-	if (ret < 0) {
-		LOG_ERR("Failed to enable gpio interrupt.");
-		return ret;
-	}
-
-	return 0;
 }
 
 static void mpu9250_gpio_callback(const struct device *dev,
@@ -80,13 +90,32 @@ static void mpu9250_thread_cb(const struct device *dev)
 	const struct mpu9250_config *cfg = dev->config;
 	int ret;
 
-	if (drv_data->data_ready_handler != NULL) {
-		drv_data->data_ready_handler(dev,
-					     drv_data->data_ready_trigger);
+	uint8_t irqSource;
+	ret = i2c_reg_read_byte_dt(&cfg->i2c, MPU9250_REG_INT_STATUS, &irqSource);	// read irq source
+	LOG_DBG("mpu9250_thread_cb %02X", irqSource);
+	if(irqSource & MPU9250_WOM_BIT) {	
+		if ((drv_data->motion_handler != NULL) && (TailPulseCntr == 0)) {	// do not send another motion irq, just restart the counter
+			drv_data->trigger.type = SENSOR_TRIG_MOTION;
+			drv_data->motion_handler(dev, &drv_data->trigger);			
+		}		
+		TailPulseCntr = drv_data->wom_hysterisis;	// restart counter;
+	}
+
+	if(irqSource & MPU9250_DRDY_BIT) {
+		if ((drv_data->data_rdy_handler == NULL) || (TailPulseCntr == 0)) {
+			if(drv_data->stationary_handler != NULL) {
+				drv_data->trigger.type = SENSOR_TRIG_STATIONARY;
+				drv_data->stationary_handler(dev, &drv_data->trigger);
+			}
+		} else {
+			drv_data->trigger.type = SENSOR_TRIG_DATA_READY;
+			drv_data->data_rdy_handler(dev, &drv_data->trigger);
+			TailPulseCntr--;
+		}
 	}
 
 	ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin,
-					      GPIO_INT_EDGE_TO_ACTIVE);
+					      GPIO_INT_LEVEL_ACTIVE);		// TP changed from EDGE to LEVEL
 	if (ret < 0) {
 		LOG_ERR("Enabling gpio interrupt failed with err: %d", ret);
 	}
@@ -143,14 +172,6 @@ int mpu9250_init_interrupt(const struct device *dev)
 		return ret;
 	}
 
-	/* enable data ready interrupt */
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, MPU9250_REG_INT_EN,
-				    MPU9250_DRDY_EN);
-	if (ret < 0) {
-		LOG_ERR("Failed to enable data ready interrupt.");
-		return ret;
-	}
-
 #if defined(CONFIG_MPU9250_TRIGGER_OWN_THREAD)
 	ret = k_sem_init(&drv_data->gpio_sem, 0, K_SEM_MAX_LIMIT);
 	if (ret < 0) {
@@ -167,8 +188,6 @@ int mpu9250_init_interrupt(const struct device *dev)
 	drv_data->work.handler = mpu9250_work_cb;
 #endif
 
-	ret = gpio_pin_interrupt_configure_dt(&cfg->int_pin,
-					      GPIO_INT_EDGE_TO_ACTIVE);
 	if (ret < 0) {
 		LOG_ERR("Failed to enable interrupt");
 		return ret;

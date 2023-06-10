@@ -27,6 +27,8 @@ struct mpu9250_data {
 	int16_t gyro_z;
 	uint16_t gyro_sensitivity_x10;
 
+	uint16_t wom_hysterisis;
+	uint8_t wom_threshold;
 #ifdef CONFIG_MPU9250_MAGN_EN
 	int16_t magn_x;
 	int16_t magn_scale_x;
@@ -41,8 +43,10 @@ struct mpu9250_data {
 	const struct device *dev;
 	struct gpio_callback gpio_cb;
 
-	const struct sensor_trigger *data_ready_trigger;
-	sensor_trigger_handler_t data_ready_handler;
+	struct sensor_trigger trigger;
+	sensor_trigger_handler_t data_rdy_handler;
+	sensor_trigger_handler_t motion_handler;
+	sensor_trigger_handler_t stationary_handler;
 
 #if defined(CONFIG_MPU9250_TRIGGER_OWN_THREAD)
 	K_KERNEL_STACK_MEMBER(thread_stack, CONFIG_MPU9250_THREAD_STACK_SIZE);
@@ -62,6 +66,7 @@ struct mpu9250_config {
 	uint8_t gyro_fs;
 	uint8_t accel_fs;
 	uint8_t accel_dlpf;
+	uint8_t accel_lp_odr;
 #ifdef CONFIG_MPU9250_TRIGGER
 	const struct gpio_dt_spec int_pin;
 #endif /* CONFIG_MPU9250_TRIGGER */
