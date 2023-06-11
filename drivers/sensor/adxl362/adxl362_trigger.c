@@ -179,11 +179,12 @@ int adxl362_init_interrupt(const struct device *dev)
 #if defined(CONFIG_ADXL362_TRIGGER_OWN_THREAD)
 	k_sem_init(&drv_data->gpio_sem, 0, K_SEM_MAX_LIMIT);
 
-	k_thread_create(&drv_data->thread, drv_data->thread_stack,
+	k_tid_t t = k_thread_create(&drv_data->thread, drv_data->thread_stack,
 			CONFIG_ADXL362_THREAD_STACK_SIZE,
 			(k_thread_entry_t)adxl362_thread, drv_data,
 			NULL, NULL, K_PRIO_COOP(CONFIG_ADXL362_THREAD_PRIORITY),
 			0, K_NO_WAIT);
+	k_thread_name_set(t, "ADXL TRIG");
 #elif defined(CONFIG_ADXL362_TRIGGER_GLOBAL_THREAD)
 	drv_data->work.handler = adxl362_work_cb;
 #endif
