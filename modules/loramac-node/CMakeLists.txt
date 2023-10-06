@@ -25,6 +25,20 @@ zephyr_library_sources_ifdef(CONFIG_HAS_SEMTECH_SX126X
   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/sx126x/sx126x.c
   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/sx126x/radio.c
 )
+# zephyr_library_sources_ifdef(CONFIG_HAS_SEMTECH_LR1110
+#   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/radio.c
+#   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/lr1110_driver/src/lr1110_radio.c
+#   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/lr1110_driver/src/lr1110_system.c
+#   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/lr1110_driver/src/lr1110_regmem.c
+#   ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/boards/WM1110/lr1110-board.c
+# )
+
+# if(${CONFIG_LORA_LR1110})
+# 	zephyr_library_include_directories(
+#   		${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/lr1110_driver/src
+#       ${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110
+# 	)
+# endif()
 
 if(${CONFIG_HAS_SEMTECH_LORAMAC})
   zephyr_library_include_directories(

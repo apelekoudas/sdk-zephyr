@@ -18,6 +18,8 @@
 LOG_MODULE_DECLARE(lis2dh, CONFIG_SENSOR_LOG_LEVEL);
 #include "lis2dh.h"
 
+static uint16_t TailPulseCntr = 0;
+
 static inline void setup_int1(const struct device *dev,
 			      bool enable)
 {
@@ -216,7 +218,13 @@ int lis2dh_acc_slope_config(const struct device *dev,
 	const struct lis2dh_config *cfg = dev->config;
 	int status;
 
-	if (attr == SENSOR_ATTR_SLOPE_TH) {
+	if ( attr == SENSOR_ATTR_HYSTERESIS ) {
+		if (val->val1 < 1 || val->val1 > 1023) {
+			return -ENOTSUP;
+		}
+		lis2dh->tailPulses = val->val1;
+		return 0; 
+	} else if (attr == SENSOR_ATTR_SLOPE_TH) {
 		uint8_t range_g, reg_val;
 		uint32_t slope_th_ums2;
 
@@ -240,7 +248,7 @@ int lis2dh_acc_slope_config(const struct device *dev,
 		/* 7 bit full range value */
 		reg_val = 128 / range_g * (slope_th_ums2 - 1) / SENSOR_G;
 
-		LOG_INF("int2_ths=0x%x range_g=%d ums2=%u", reg_val,
+		LOG_DBG("int2_ths=0x%x range_g=%d ums2=%u", reg_val,
 			    range_g, slope_th_ums2 - 1);
 
 		status = lis2dh->hw_tf->write_reg(dev,
@@ -257,7 +265,7 @@ int lis2dh_acc_slope_config(const struct device *dev,
 			return -ENOTSUP;
 		}
 
-		LOG_INF("int2_dur=0x%x", val->val1);
+		LOG_DBG("int2_dur=0x%x", val->val1);
 
 		status = lis2dh->hw_tf->write_reg(dev,
 						  cfg->hw.anym_on_int1 ?
@@ -357,7 +365,15 @@ static void lis2dh_thread_cb(const struct device *dev)
 			atomic_test_and_clear_bit(&lis2dh->trig_flags,
 			TRIGGED_INT1)) {
 		if (likely(lis2dh->handler_drdy != NULL)) {
-			lis2dh->handler_drdy(dev, lis2dh->trig_drdy);
+			if( TailPulseCntr != 0 ) {
+				lis2dh->handler_drdy(dev, lis2dh->trig_drdy);
+				TailPulseCntr--;
+			} else {
+				if (likely(lis2dh->handler_anymotion != NULL)) {
+					struct sensor_trigger stationary = {.type = SENSOR_TRIG_STATIONARY};
+					lis2dh->handler_anymotion(dev, &stationary);
+				}
+			}
 
 		}
 
@@ -390,7 +406,17 @@ static void lis2dh_thread_cb(const struct device *dev)
 		}
 
 		if (likely(lis2dh->handler_anymotion != NULL)) {
-			lis2dh->handler_anymotion(dev, lis2dh->trig_anymotion);
+			if ( TailPulseCntr == 0 ) {
+				struct sensor_trigger motion = {.type = SENSOR_TRIG_MOTION};
+				lis2dh->handler_anymotion(dev, &motion);
+			}
+
+			TailPulseCntr = lis2dh->tailPulses;	//restart
+		}
+
+		k_msleep(100);	// wait the next sample to reset INT
+		if( gpio_pin_get_dt(&cfg->gpio_int) ) {
+			LOG_WRN("LIS IRQ still high");	// should not trigger givent the above delay
 		}
 
 		/* Reactivate level triggered interrupt if handler did not
@@ -481,7 +507,7 @@ int lis2dh_init_interrupt(const struct device *dev)
 		return status;
 	}
 
-	LOG_INF("%s: int1 on %s.%02u", dev->name,
+	LOG_DBG("%s: int1 on %s.%02u", dev->name,
 				       cfg->gpio_drdy.port->name,
 				       cfg->gpio_drdy.pin);
 
@@ -522,7 +548,7 @@ check_gpio_int:
 		return status;
 	}
 
-	LOG_INF("%s: int2 on %s.%02u", dev->name,
+	LOG_DBG("%s: int2 on %s.%02u", dev->name,
 				       cfg->gpio_int.port->name,
 				       cfg->gpio_int.pin);
 

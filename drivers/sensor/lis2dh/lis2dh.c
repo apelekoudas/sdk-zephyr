@@ -288,6 +288,7 @@ static int lis2dh_acc_config(const struct device *dev,
 #if defined(CONFIG_LIS2DH_TRIGGER)
 	case SENSOR_ATTR_SLOPE_TH:
 	case SENSOR_ATTR_SLOPE_DUR:
+	case SENSOR_ATTR_HYSTERESIS:
 		return lis2dh_acc_slope_config(dev, attr, val);
 #endif
 #ifdef CONFIG_LIS2DH_ACCEL_HP_FILTERS

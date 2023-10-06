@@ -262,6 +262,7 @@ struct lis2dh_data {
 	const struct sensor_trigger *trig_anymotion;
 	atomic_t trig_flags;
 	enum sensor_channel chan_drdy;
+	uint16_t tailPulses;
 
 #if defined(CONFIG_LIS2DH_TRIGGER_OWN_THREAD)
 	K_KERNEL_STACK_MEMBER(thread_stack, CONFIG_LIS2DH_THREAD_STACK_SIZE);
