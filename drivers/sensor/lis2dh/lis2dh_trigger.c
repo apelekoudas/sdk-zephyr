@@ -18,6 +18,12 @@
 LOG_MODULE_DECLARE(lis2dh, CONFIG_SENSOR_LOG_LEVEL);
 #include "lis2dh.h"
 
+#if IS_ENABLED(CONFIG_SOC_FAMILY_STM32)
+	#define IRQ_TRIG_TYPE 		GPIO_INT_EDGE_TO_ACTIVE //STM32 does not support level triggered interrupts
+#else
+	#define IRQ_TRIG_TYPE 		GPIO_INT_LEVEL_ACTIVE
+#endif
+
 static uint16_t TailPulseCntr = 0;
 
 static inline void setup_int1(const struct device *dev,
@@ -27,7 +33,7 @@ static inline void setup_int1(const struct device *dev,
 
 	gpio_pin_interrupt_configure_dt(&cfg->gpio_drdy,
 					enable
-					? GPIO_INT_LEVEL_ACTIVE
+					? IRQ_TRIG_TYPE
 					: GPIO_INT_DISABLE);
 }
 
@@ -125,7 +131,7 @@ static inline void setup_int2(const struct device *dev,
 
 	gpio_pin_interrupt_configure_dt(&cfg->gpio_int,
 					enable
-					? GPIO_INT_LEVEL_ACTIVE
+					? IRQ_TRIG_TYPE
 					: GPIO_INT_DISABLE);
 }
 
@@ -410,13 +416,18 @@ static void lis2dh_thread_cb(const struct device *dev)
 				struct sensor_trigger motion = {.type = SENSOR_TRIG_MOTION};
 				lis2dh->handler_anymotion(dev, &motion);
 			}
-
+#if !IS_ENABLED(CONFIG_ERRATA_NENA_V7_IMU_IRQ)
 			TailPulseCntr = lis2dh->tailPulses;	//restart
+#endif
 		}
 
+#if !IS_ENABLED(CONFIG_ERRATA_NENA_V7_IMU_IRQ)	//TODO optimize more these delays. Needed?
 		k_msleep(100);	// wait the next sample to reset INT
+#else
+		k_msleep(200);	// wait the next sample to reset INT
+#endif
 		if( gpio_pin_get_dt(&cfg->gpio_int) ) {
-			LOG_WRN("LIS IRQ still high");	// should not trigger givent the above delay
+			LOG_WRN("LIS IRQ still high");	// should not trigger given the above delay
 		}
 
 		/* Reactivate level triggered interrupt if handler did not
@@ -576,13 +587,23 @@ check_gpio_int:
 		/* enable interrupt 1 on int1 line */
 		status = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL3,
 						   LIS2DH_EN_INT1_INT1,
-						   LIS2DH_EN_INT1_INT1);
+						   LIS2DH_EN_INT1_INT1);					   
 		if (cfg->hw.anym_latch) {
 			/* latch int1 line interrupt */
 			status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_CTRL5,
 							  LIS2DH_EN_LIR_INT1);
 		}
+#if IS_ENABLED(CONFIG_ERRATA_NENA_V7_IMU_IRQ)	
+		/* enable interrupt 1 also on int2 line */	
+		status |= lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL6,
+						LIS2DH_EN_INT1_INT2,
+						LIS2DH_EN_INT1_INT2);					   				   
+#endif
 	} else {
+#if IS_ENABLED(CONFIG_ERRATA_NENA_V7_IMU_IRQ)	
+		//#error anym_on_int1 must be enabled in V7!!!
+		return -1;
+#endif
 		/* enable interrupt 2 on int2 line */
 		status = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL6,
 						   LIS2DH_EN_INT2_INT2,
