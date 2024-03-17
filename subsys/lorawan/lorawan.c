@@ -682,6 +682,14 @@ int lorawan_start(void)
 	mib_req.Param.SystemMaxRxError = CONFIG_LORAWAN_SYSTEM_MAX_RX_ERROR;
 	LoRaMacMibSetRequestConfirm(&mib_req);
 
+	/* TP set antenna gain */
+	mib_req.Type = MIB_ANTENNA_GAIN;
+	mib_req.Param.AntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
+	LoRaMacMibSetRequestConfirm(&mib_req);
+	mib_req.Type = MIB_DEFAULT_ANTENNA_GAIN;
+	mib_req.Param.DefaultAntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
+	LoRaMacMibSetRequestConfirm(&mib_req);
+	
 	return 0;
 }
 
