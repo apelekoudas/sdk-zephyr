@@ -43,6 +43,8 @@ int __sx12xx_configure_pin(const struct gpio_dt_spec *gpio, gpio_flags_t flags)
 {
 	int err;
 
+	if(gpio->pin == 0) return 0;	// TP added to handle unnconnected reset line
+
 	if (!device_is_ready(gpio->port)) {
 		LOG_ERR("GPIO device not ready %s", gpio->port->name);
 		return -ENODEV;
