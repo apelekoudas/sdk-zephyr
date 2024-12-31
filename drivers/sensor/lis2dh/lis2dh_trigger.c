@@ -353,7 +353,7 @@ static void lis2dh_thread_cb(const struct device *dev)
 		if (unlikely(status < 0)) {
 			LOG_ERR("lis2dh_start_trigger_int1: %d", status);
 		}
-		return;
+		// return;
 	}
 
 	if (cfg->gpio_int.port &&
@@ -364,7 +364,7 @@ static void lis2dh_thread_cb(const struct device *dev)
 		if (unlikely(status < 0)) {
 			LOG_ERR("lis2dh_start_trigger_int2: %d", status);
 		}
-		return;
+		// return;
 	}
 
 	if (cfg->gpio_drdy.port &&
@@ -390,7 +390,7 @@ static void lis2dh_thread_cb(const struct device *dev)
 			setup_int1(dev, true);
 		}
 
-		return;
+		// return;
 	}
 
 	if (cfg->gpio_int.port &&
@@ -421,15 +421,6 @@ static void lis2dh_thread_cb(const struct device *dev)
 #endif
 		}
 
-#if !IS_ENABLED(CONFIG_ERRATA_NENA_V7_IMU_IRQ)	//TODO optimize more these delays. Needed?
-		k_msleep(100);	// wait the next sample to reset INT
-#else
-		k_msleep(200);	// wait the next sample to reset INT
-#endif
-		if( gpio_pin_get_dt(&cfg->gpio_int) ) {
-			LOG_WRN("LIS IRQ still high");	// should not trigger given the above delay
-		}
-
 		/* Reactivate level triggered interrupt if handler did not
 		 * disable itself
 		 */
@@ -440,7 +431,7 @@ static void lis2dh_thread_cb(const struct device *dev)
 		LOG_DBG("@tick=%u int2_src=0x%x", k_cycle_get_32(),
 			    reg_val);
 
-		return;
+		// return;
 	}
 }
 

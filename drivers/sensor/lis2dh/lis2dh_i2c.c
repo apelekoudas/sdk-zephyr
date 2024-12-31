@@ -34,8 +34,16 @@ static int lis2dh_i2c_write_data(const struct device *dev, uint8_t reg_addr,
 {
 	const struct lis2dh_config *cfg = dev->config;
 
-	return i2c_burst_write_dt(&cfg->bus_cfg.i2c, reg_addr | LIS2DH_AUTOINCREMENT_ADDR, value,
-				  len);
+	// TP removed i2c_burst_write_dt as incompatible with XM125 I2C presence detector.
+	// return i2c_burst_write_dt(&cfg->bus_cfg.i2c, reg_addr | LIS2DH_AUTOINCREMENT_ADDR, value,
+	// 			  len);
+	int rc=0;
+	while (len-- > 0) {
+		rc |= i2c_reg_write_byte_dt(&cfg->bus_cfg.i2c, reg_addr, *value);
+		reg_addr++;
+		value++;
+	}
+	return rc;
 }
 
 static int lis2dh_i2c_read_reg(const struct device *dev, uint8_t reg_addr,
