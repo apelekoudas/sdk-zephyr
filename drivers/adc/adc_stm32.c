@@ -20,6 +20,7 @@
 #include <zephyr/init.h>
 #include <soc.h>
 #include <stm32_ll_adc.h>
+#include <zephyr/pm/device.h>
 #if defined(CONFIG_SOC_SERIES_STM32U5X)
 #include <stm32_ll_pwr.h>
 #endif /* CONFIG_SOC_SERIES_STM32U5X */
@@ -1581,6 +1582,35 @@ static int adc_stm32_init(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_DEVICE
+
+static int adc_stm32_pm_action(const struct device *dev,
+			       enum pm_device_action action)
+{
+	// struct adc_stm32_data *data = dev->data;
+	const struct adc_stm32_cfg *config = dev->config;
+	// const struct device *const clk = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
+	ADC_TypeDef *adc = (ADC_TypeDef *)config->base;
+
+
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		LL_ADC_EnableInternalRegulator(adc);
+		k_busy_wait(LL_ADC_DELAY_INTERNAL_REGUL_STAB_US);
+		adc_stm32_enable(adc);
+		break;
+	case PM_DEVICE_ACTION_SUSPEND:
+		adc_stm32_disable(adc);
+		LL_ADC_DisableInternalRegulator(adc);
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_PM_DEVICE */
+
 static const struct adc_driver_api api_stm32_driver_api = {
 	.channel_setup = adc_stm32_channel_setup,
 	.read = adc_stm32_read,
@@ -1715,8 +1745,10 @@ static struct adc_stm32_data adc_stm32_data_##index = {			\
 	ADC_DMA_CHANNEL(index, dmamux, NULL, PERIPHERAL, MEMORY)	\
 };									\
 									\
+PM_DEVICE_DT_INST_DEFINE(index, adc_stm32_pm_action);		        \
+									\
 DEVICE_DT_INST_DEFINE(index,						\
-		    &adc_stm32_init, NULL,				\
+		    &adc_stm32_init, PM_DEVICE_DT_INST_GET(index),	\
 		    &adc_stm32_data_##index, &adc_stm32_cfg_##index,	\
 		    POST_KERNEL, CONFIG_ADC_INIT_PRIORITY,		\
 		    &api_stm32_driver_api);
