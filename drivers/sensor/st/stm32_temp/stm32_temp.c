@@ -276,6 +276,7 @@ static int stm32_temp_init(const struct device *dev)
 		.buffer = &data->sample_buffer,
 		.buffer_size = sizeof(data->sample_buffer),
 		.resolution = 12U,
+		.oversampling = 8,
 	};
 
 	return 0;

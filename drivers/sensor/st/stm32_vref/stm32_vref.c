@@ -138,6 +138,7 @@ static int stm32_vref_init(const struct device *dev)
 		.buffer = &data->sample_buffer,
 		.buffer_size = sizeof(data->sample_buffer),
 		.resolution = MEAS_RES,
+		.oversampling = 8,
 	};
 
 	return 0;

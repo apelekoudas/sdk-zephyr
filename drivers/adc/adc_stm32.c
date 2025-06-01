@@ -1671,7 +1671,8 @@ static int adc_stm32_pm_action(const struct device *dev,
 }
 #endif /* CONFIG_PM_DEVICE */
 
-static DEVICE_API(adc, api_stm32_driver_api) = {
+// static DEVICE_API(adc, api_stm32_driver_api) = {
+static STRUCT_SECTION_ITERABLE(Z_DEVICE_API_TYPE(adc), api_stm32_driver_api) = {	/* TP removed const specifier */
 	.channel_setup = adc_stm32_channel_setup,
 	.read = adc_stm32_read,
 #ifdef CONFIG_ADC_ASYNC

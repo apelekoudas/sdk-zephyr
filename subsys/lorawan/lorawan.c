@@ -772,6 +772,32 @@ int lorawan_start(void)
 	mib_req.Param.SystemMaxRxError = CONFIG_LORAWAN_SYSTEM_MAX_RX_ERROR;
 	LoRaMacMibSetRequestConfirm(&mib_req);
 
+	/* TP set antenna gain */
+	#ifndef CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 
+	  #define CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 215
+	#endif
+	mib_req.Type = MIB_ANTENNA_GAIN;
+	mib_req.Param.AntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
+	LoRaMacMibSetRequestConfirm(&mib_req);
+	mib_req.Type = MIB_DEFAULT_ANTENNA_GAIN;
+	mib_req.Param.DefaultAntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
+	LoRaMacMibSetRequestConfirm(&mib_req);
+		
+	/*
+	* Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+	*/
+	#define EU868_LC4          { 867100000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 1 }
+	#define EU868_LC5          { 867300000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 1 }
+	#define EU868_LC6          { 867500000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 1 }
+	#define EU868_LC7          { 867700000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 1 }
+	#define EU868_LC8          { 867900000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 1 }
+
+    LoRaMacChannelAdd( 3, ( ChannelParams_t )EU868_LC4 );
+    LoRaMacChannelAdd( 4, ( ChannelParams_t )EU868_LC5 );
+    LoRaMacChannelAdd( 5, ( ChannelParams_t )EU868_LC6 );
+    LoRaMacChannelAdd( 6, ( ChannelParams_t )EU868_LC7 );
+    LoRaMacChannelAdd( 7, ( ChannelParams_t )EU868_LC8 );
+
 	return 0;
 }
 

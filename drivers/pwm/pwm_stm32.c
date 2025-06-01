@@ -16,7 +16,7 @@
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/reset.h>
-#include <zephyr/device.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 
@@ -839,6 +839,38 @@ static int pwm_stm32_init(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_DEVICE
+ 
+ static int pwm_stm32_pm_action(const struct device *dev,
+ 			       enum pm_device_action action)
+ {
+ 	const struct pwm_stm32_config *cfg = dev->config;
+ 
+ 	switch (action) {
+ 	case PM_DEVICE_ACTION_RESUME:
+	 	// printk("pwm_stm32_pm_action RESUME\n");
+ 		int r = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_DEFAULT);
+ 		if (r < 0) {
+ 			LOG_ERR("PWM pinctrl setup failed (%d)", r);
+ 			return r;
+ 		}		
+ 		break;
+ 	case PM_DEVICE_ACTION_SUSPEND:
+	 	// printk("pwm_stm32_pm_action SUSPEND\n");
+ 		r = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_SLEEP);
+ 		if (r < 0) {
+ 			LOG_ERR("PWM pinctrl setup failed (%d)", r);
+ 			return r;
+ 		}	
+ 		break;
+ 	default:
+ 		return -ENOTSUP;
+ 	}
+ 
+ 	return 0;
+ }
+ #endif /* CONFIG_PM_DEVICE */
+
 #define PWM(index) DT_INST_PARENT(index)
 
 #ifdef CONFIG_PWM_CAPTURE
@@ -899,7 +931,9 @@ static void pwm_stm32_irq_config_func_##index(const struct device *dev)		\
 		CAPTURE_INIT(index)					       \
 	};                                                                     \
 									       \
-	DEVICE_DT_INST_DEFINE(index, &pwm_stm32_init, NULL,                    \
+	PM_DEVICE_DT_INST_DEFINE(index, pwm_stm32_pm_action);					\
+																			\
+	DEVICE_DT_INST_DEFINE(index, &pwm_stm32_init, PM_DEVICE_DT_INST_GET(index),                    \
 			    &pwm_stm32_data_##index,                           \
 			    &pwm_stm32_config_##index, POST_KERNEL,            \
 			    CONFIG_PWM_INIT_PRIORITY,                          \
