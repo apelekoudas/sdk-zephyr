@@ -273,6 +273,21 @@ int lorawan_set_conf_msg_tries(uint8_t tries);
 void lorawan_enable_adr(bool enable);
 
 /**
+ * @brief Set the channels mask.
+ *
+ * Change the default channels mask. When mask is not changed, all the channels
+ * can be used for data transmission. Some Network Servers don't use all the channels,
+ * in this case, the channels mask must be provided.
+ *
+ * @param channels_mask Buffer with channels mask to be used.
+ * @param channels_mask_size Size of channels mask buffer.
+ *
+ * @retval 0 successful
+ * @retval -EINVAL channels mask or channels mask size is wrong
+ */
+int lorawan_set_channels_mask(uint16_t *channels_mask, size_t channels_mask_size);
+
+/**
  * @brief Set the default data rate
  *
  * Change the default data rate.
