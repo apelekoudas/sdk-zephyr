@@ -842,6 +842,21 @@ static inline uint16_t adc_ref_internal(const struct device *dev)
 }
 
 /**
+ * @brief Set the ADC internal reference voltage
+ * 
+ * @param dev the ADC device
+ * @param vRefVal the new vRef in mV
+ */
+static inline void set_adc_ref_internal(const struct device *dev, uint16_t vRefVal)
+{
+	struct adc_driver_api *api =
+				(struct adc_driver_api *)dev->api;
+
+	printk("adc.h: Setting ADC vRef to %u\n", vRefVal);
+	api->ref_internal = vRefVal;
+}
+
+/**
  * @brief Convert a raw ADC value to millivolts.
  *
  * This function performs the necessary conversion to transform a raw
