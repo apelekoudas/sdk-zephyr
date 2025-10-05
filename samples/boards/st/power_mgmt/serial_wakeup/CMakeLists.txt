@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
+list(APPEND ZEPHYR_EXTRA_MODULES /media/apel/Windows/workspace/Zephyr/nena/hal_stm32)
+
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(stm32_pm_serial_wakeup)

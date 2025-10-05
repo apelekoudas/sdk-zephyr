@@ -1741,15 +1741,16 @@ static int adc_stm32_pm_action(const struct device *dev,
 }
 #endif /* CONFIG_PM_DEVICE */
 
-// static DEVICE_API(adc, api_stm32_driver_api) = {
-static STRUCT_SECTION_ITERABLE(Z_DEVICE_API_TYPE(adc), api_stm32_driver_api) = {	/* TP removed const specifier */
+static DEVICE_API(adc, api_stm32_driver_api) = {
 	.channel_setup = adc_stm32_channel_setup,
 	.read = adc_stm32_read,
 #ifdef CONFIG_ADC_ASYNC
 	.read_async = adc_stm32_read_async,
 #endif
-	.ref_internal = STM32_ADC_VREF_MV, /* VREF is usually connected to VDD */
+	// .ref_internal = STM32_ADC_VREF_MV, /* VREF is usually connected to VDD */
 };
+
+uint16_t stm32_nena_ref_internal = STM32_ADC_VREF_MV;
 
 /* Macros for ADC clock source and prescaler */
 #if DT_ANY_INST_HAS_PROP_STATUS_OKAY(st_adc_clock_source)

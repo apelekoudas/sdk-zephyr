@@ -1317,7 +1317,7 @@ static void uart_stm32_isr(const struct device *dev)
 
 		if (!data->rx_woken) {
 			/* Prevent SoC from entering STOP mode until RX goes IDLE */
-			uart_stm32_pm_policy_state_lock_get_unconditional();
+			// TP uart_stm32_pm_policy_state_lock_get_unconditional();
 			data->rx_woken = true;
 		}
 

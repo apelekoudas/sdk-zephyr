@@ -706,7 +706,7 @@ __subsystem struct adc_driver_api {
 #ifdef CONFIG_ADC_ASYNC
 	adc_api_read_async    read_async;
 #endif
-	uint16_t ref_internal;	/* mV */
+	// TP uint16_t ref_internal;	/* mV */
 };
 
 /**
@@ -827,6 +827,7 @@ static inline int z_impl_adc_read_async(const struct device *dev,
 }
 #endif /* CONFIG_ADC_ASYNC */
 
+extern uint16_t stm32_nena_ref_internal;
 /**
  * @brief Get the internal reference voltage.
  *
@@ -838,7 +839,7 @@ static inline int z_impl_adc_read_async(const struct device *dev,
  */
 static inline uint16_t adc_ref_internal(const struct device *dev)
 {
-	return DEVICE_API_GET(adc, dev)->ref_internal;
+	return stm32_nena_ref_internal;// TP DEVICE_API_GET(adc, dev)->ref_internal;
 }
 
 /**
@@ -849,11 +850,8 @@ static inline uint16_t adc_ref_internal(const struct device *dev)
  */
 static inline void set_adc_ref_internal(const struct device *dev, uint16_t vRefVal)
 {
-	struct adc_driver_api *api =
-				(struct adc_driver_api *)dev->api;
-
 	printk("adc.h: Setting ADC vRef to %u\n", vRefVal);
-	api->ref_internal = vRefVal;
+	stm32_nena_ref_internal = vRefVal;
 }
 
 /**
