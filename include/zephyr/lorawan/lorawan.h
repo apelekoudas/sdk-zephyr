@@ -371,6 +371,13 @@ void lorawan_enable_adr(bool enable);
 int lorawan_set_channels_mask(uint16_t *channels_mask, size_t channels_mask_size);
 
 /**
+ * @brief Set the antenna gain.
+ * 
+ * @param gain_x100 antenna gain x 100 (i.e. 215).
+ */
+void lorawan_set_antenna_gain(int16_t gain_x100);
+
+/**
  * @brief Set the default data rate
  *
  * Change the default data rate.
