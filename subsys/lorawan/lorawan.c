@@ -562,6 +562,18 @@ int lorawan_set_conf_msg_tries(uint8_t tries)
 	return 0;
 }
 
+void lorawan_set_antenna_gain(int16_t gain_x100)
+{
+	MibRequestConfirm_t mib_req;
+
+	mib_req.Type = MIB_ANTENNA_GAIN;
+	mib_req.Param.AntennaGain = gain_x100 / 100.0f; 
+	LoRaMacMibSetRequestConfirm(&mib_req);
+	mib_req.Type = MIB_DEFAULT_ANTENNA_GAIN;
+	mib_req.Param.DefaultAntennaGain = gain_x100 / 100.0f;
+	LoRaMacMibSetRequestConfirm(&mib_req);
+}
+
 int lorawan_send(uint8_t port, uint8_t *data, uint8_t len,
 		 enum lorawan_message_type type)
 {
@@ -699,14 +711,6 @@ int lorawan_start(void)
 	/* TODO: Move these to a proper location */
 	mib_req.Type = MIB_SYSTEM_MAX_RX_ERROR;
 	mib_req.Param.SystemMaxRxError = CONFIG_LORAWAN_SYSTEM_MAX_RX_ERROR;
-	LoRaMacMibSetRequestConfirm(&mib_req);
-
-	/* TP set antenna gain */
-	mib_req.Type = MIB_ANTENNA_GAIN;
-	mib_req.Param.AntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
-	LoRaMacMibSetRequestConfirm(&mib_req);
-	mib_req.Type = MIB_DEFAULT_ANTENNA_GAIN;
-	mib_req.Param.DefaultAntennaGain = CONFIG_N_EU868_DEFAULT_ANTENNA_GAIN_x_100 / 100.0f; 
 	LoRaMacMibSetRequestConfirm(&mib_req);
 	
 	return 0;
