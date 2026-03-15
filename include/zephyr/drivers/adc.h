@@ -706,7 +706,7 @@ __subsystem struct adc_driver_api {
 #ifdef CONFIG_ADC_ASYNC
 	adc_api_read_async    read_async;
 #endif
-	// TP uint16_t ref_internal;	/* mV */
+	uint16_t ref_internal;	/* mV */
 };
 
 /**
